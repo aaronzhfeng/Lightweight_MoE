@@ -1,0 +1,2 @@
+Model,Recall@10,NDCG@10,MRR
+TinyBERT_MoE,1.0000,0.9610,0.9494
