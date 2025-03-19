@@ -1,0 +1,3 @@
+Model,Recall@10,NDCG@10,MRR
+FineTunedTinyBERT,0.8830,0.8933,0.9308
+FineTunedTinyBERT+MoE,0.8505,0.8608,0.8986
