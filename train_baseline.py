@@ -170,6 +170,13 @@ class EpochMetricsLogger(TrainerCallback):
             f.write("epoch,train_loss,train_accuracy\n")
         self.trainer = None
 
+    def on_train_begin(self, args, state, control, **kwargs):
+        # Capture trainer instance at the start of training
+        trainer = kwargs.get("trainer", None)
+        if trainer is not None:
+            self.trainer = trainer
+        return control
+
     def set_trainer(self, trainer):
         self.trainer = trainer
 
@@ -180,19 +187,18 @@ class EpochMetricsLogger(TrainerCallback):
         loss_sum = getattr(self.trainer, "epoch_loss_sum", 0.0)
         total = getattr(self.trainer, "epoch_total", 0)
         correct = getattr(self.trainer, "epoch_correct", 0)
-        
         avg_loss = loss_sum / total if total > 0 else 0.0
         avg_acc = correct / total if total > 0 else 0.0
-        
+
         # Write to CSV
         with open(self.filepath, "a") as f:
             f.write(f"{epoch},{avg_loss:.4f},{avg_acc:.4f}\n")
-        
         # Reset accumulators
         self.trainer.epoch_loss_sum = 0.0
         self.trainer.epoch_total = 0
         self.trainer.epoch_correct = 0
         return control
+
 
 # ---------------------------
 # 6. TrainingArguments

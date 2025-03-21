@@ -14,8 +14,8 @@ from utils import recall_at_k, ndcg_at_k, mean_reciprocal_rank
 # ---------------------------
 # Directories for the fine-tuned models
 baseline_model_dir = "./retrieval_model_tinybert"  # Fine-tuned baseline TinyBERT
-sbmoe_model_dir    = "./retrieval_model"      # Fine-tuned SB-MoE TinyBERT
-moe_model_dir      = "./retrieval_model_regular"        # Fine-tuned Regular MoE TinyBERT
+sbmoe_model_dir    = "./retrieval_model_sbmoe"      # Fine-tuned SB-MoE TinyBERT
+moe_model_dir      = "./retrieval_model_moe"        # Fine-tuned regular MoE TinyBERT
 
 base_model_name = "huawei-noah/TinyBERT_General_6L_768D"
 dataset_name    = "scifact"
@@ -60,6 +60,7 @@ baseline_model.to(device)
 # 4. Load SB-MoE TinyBERT
 # ---------------------------
 print("Evaluating Fine-Tuned SB-MoE TinyBERT...")
+# Here, we assume you saved your SB-MoE model using the TinyBERTWithMoE class.
 sbmoe_model_path = os.path.join(sbmoe_model_dir, "model.safetensors")
 sbmoe_state = safetensors.torch.load_file(sbmoe_model_path, device="cpu")
 sbmoe_model = TinyBERTWithMoE(tinybert_name=base_model_name, num_experts=8)
@@ -73,6 +74,7 @@ sbmoe_model.to(device)
 print("Evaluating Fine-Tuned Regular MoE TinyBERT...")
 moe_model_path = os.path.join(moe_model_dir, "model.safetensors")
 moe_state = safetensors.torch.load_file(moe_model_path, device="cpu")
+# Here we use our Regular MoE class (TinyBERTMoERegular)
 moe_model = TinyBERTMoERegular(tinybert_name=base_model_name, num_experts=8, top_k=2, temperature=5.0)
 moe_model.load_state_dict(moe_state)
 moe_model.eval()
@@ -89,13 +91,8 @@ def encode_corpus(model, texts, tokenizer, batch_size, device):
             enc = tokenizer(batch_texts, padding=True, truncation=True, max_length=256, return_tensors="pt")
             enc = {k: v.to(device) for k, v in enc.items()}
             outputs = model(**enc)
-            # If the output is a ModelOutput with last_hidden_state, extract the [CLS] token.
-            # Otherwise, assume the output is already the [CLS] embedding.
-            if hasattr(outputs, "last_hidden_state"):
-                cls_emb = outputs.last_hidden_state[:, 0, :]
-            else:
-                cls_emb = outputs
-            embeddings.append(cls_emb.cpu().numpy())
+            # For retrieval, we use the [CLS] token embedding
+            embeddings.append(outputs.cpu().numpy())
     return np.vstack(embeddings)
 
 print("Encoding corpus with Baseline TinyBERT...")
@@ -123,13 +120,10 @@ def evaluate_model(model, index, queries, qrels, tokenizer, device, K):
     recalls, ndcgs, mrrs = [], [], []
     with torch.no_grad():
         for qid, query_text in queries.items():
-            enc = tokenizer(query_text, padding=True, truncation=True, max_length=256, return_tensors='pt')
+            enc = tokenizer(query_text, padding=True, truncation=True, max_length=256, return_tensors="pt")
             enc = {k: v.to(device) for k, v in enc.items()}
             outputs = model(**enc)
-            if hasattr(outputs, "last_hidden_state"):
-                q_emb = outputs.last_hidden_state[:, 0, :].cpu().numpy()
-            else:
-                q_emb = outputs.cpu().numpy()
+            q_emb = outputs.cpu().numpy()
             D, I = index.search(q_emb, K)
             retrieved_doc_ids = [doc_ids[idx] for idx in I[0]]
             gold_docs = set(qrels.get(qid, {}).keys())

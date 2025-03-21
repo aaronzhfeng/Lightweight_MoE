@@ -244,6 +244,13 @@ class EpochMetricsLogger(TrainerCallback):
             f.write("epoch,train_loss,train_accuracy\n")
         self.trainer = None
 
+    def on_train_begin(self, args, state, control, **kwargs):
+        # Capture trainer instance at the start of training
+        trainer = kwargs.get("trainer", None)
+        if trainer is not None:
+            self.trainer = trainer
+        return control
+
     def set_trainer(self, trainer):
         self.trainer = trainer
 
@@ -264,6 +271,7 @@ class EpochMetricsLogger(TrainerCallback):
         self.trainer.epoch_total = 0
         self.trainer.epoch_correct = 0
         return control
+
 
 # ---------------------------
 # 8. Set up TrainingArguments
