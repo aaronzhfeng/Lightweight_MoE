@@ -11,7 +11,7 @@ This project builds a dense retrieval system using a lightweight transformer—*
 
 ### 2. SB-MoE Layer
 - A Mixture-of-Experts layer is added on top of the TinyBERT final layer.
-- Contains 2–4 small feed-forward expert networks.
+- Contains 4-8 small feed-forward expert networks.
 - A gating mechanism dynamically routes each input (the [CLS] token) to one expert (top-1 selection), ensuring minimal extra computation.
 
 ### 3. Dataset (BEIR)
